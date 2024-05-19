@@ -45,7 +45,7 @@
             </div>
             <div style="flex:8">
               <?php if (file_exists($row['image'])):?>
-                <div style="">
+                <div>
                   <img src="<?php echo $row['image']?>" style="width: 100%; height: 200px; object-fit: cover;">
                 </div>
               <?php endif;?>
