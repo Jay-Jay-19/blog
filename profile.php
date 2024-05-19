@@ -4,7 +4,70 @@
 
   check_login();
 
-  if ($_SERVER['REQUEST_METHOD'] == "POST" && !empty($_POST['action']) && $_POST['action'] == 'delete')
+  if ($_SERVER['REQUEST_METHOD'] == "POST" && !empty($_POST['action']) && $_POST['action'] == 'post_delete')
+  {
+    // delete your post
+    $id = $_GET['id'] ?? 0;
+    $user_id = $_SESSION['info']['id'];
+
+    $query = "select * from posts where id = '$id' and user_id = '$user_id' limit 1";
+    $result = mysqli_query($con, $query);
+    if (mysqli_num_rows($result) > 0) {
+      
+      $row = mysqli_fetch_assoc($result);
+      if (file_exists($row['image'])) {
+        unlink($row['image']);
+      }
+    }
+
+    $query = "delete from posts where id = '$id' && user_id = '$user_id' limit 1";
+    $result = mysqli_query($con, $query);
+
+    header("Location: profile.php");
+    die;
+  }
+  elseif ($_SERVER['REQUEST_METHOD'] == "POST" && !empty($_POST['action'] && $_POST['action'] == "post_edit"))
+  {
+    // post edit
+    $id = $_GET['id'] ?? 0;
+    $user_id = $_SESSION['info']['id'];
+    $image_added = false;
+    if (!empty($_FILES['image']['name']) && $_FILES['image']['error'] == 0) {
+      // file was uploaded
+      $folder = "uploads/";
+      if (!file_exists($folder)) {
+        mkdir($folder,0777,true);
+      }
+      $image = $folder . $_FILES['image']['name'];
+      move_uploaded_file($_FILES['image']['tmp_name'], $image);
+
+      $query = "select * from posts where id = '$id' and user_id = '$user_id' limit 1";
+      $result = mysqli_query($con, $query);
+
+      if (mysqli_num_rows($result) > 0) {
+        $row = mysqli_fetch_assoc($result);
+          if (file_exists($row['image'])) {
+          unlink($row['image']);
+        }
+      }
+      
+      $image_added = true;
+    }
+
+    $post = addslashes($_POST['post']);
+
+    if ($image_added == true) {
+      $query = "update posts set post = 'post', image = '$image' where id = '$id' && user_id = '$user_id' limit 1";
+    } else {
+      $query = "update posts set post = '$post' where id = '$id' && user_id = '$user_id' limit 1";
+    }
+   
+    $result = mysqli_query($con, $query);
+
+    header("Location: profile.php");
+    die;
+  }
+  elseif ($_SERVER['REQUEST_METHOD'] == "POST" && !empty($_POST['action']) && $_POST['action'] == 'delete')
   {
     // delete your profile
     $id = $_SESSION['info']['id'];
@@ -107,7 +170,57 @@
 
     <div style="margin: auto; max-width: 600px">
 
-      <?php if (!empty($_GET['action']) && $_GET['action'] === 'edit') :?>
+      <?php if (!empty($_GET['action']) && $_GET['action'] === 'post_delete' && !empty($_GET['id'])):?>
+        
+        <?php
+          $id = (int)$_GET['id'];
+          $query = "select * from posts where id = '$id' limit 1";
+          $result = mysqli_query($con, $query);
+        ?>
+
+        <?php if (mysqli_num_rows($result) > 0):?>
+          <?php $row = (mysqli_fetch_assoc($result))?>
+
+          <h3>Are you sure you want to delete this post ?</h3>
+          <form method="post" enctype="multipart/form-data" style="margin: auto; padding: 10px;">
+
+            <img src="<?php echo $row['image']?>" style="width: 100%; height: 200px; object-fit: cover;"><br>
+            <div><?php echo $row['post']?></div><br>
+            <input type="hidden" name="action" value="post_delete">
+
+            <button>Delete</button>
+            <a href="profile.php">
+              <button type="button">Cancel</button>
+            </a>
+          </form>
+        <?php endif;?>
+        
+      <?php elseif (!empty($_GET['action']) && $_GET['action'] === 'post_edit' && !empty($_GET['id'])):?>
+
+        <?php
+          $id = (int)$_GET['id'];
+          $query = "select * from posts where id = '$id' limit 1";
+          $result = mysqli_query($con, $query);
+        ?>
+
+        <?php if (mysqli_num_rows($result) > 0):?>
+          <?php $row = (mysqli_fetch_assoc($result))?>
+          <h5>Edit a post</h5>
+          <form method="post" enctype="multipart/form-data" style="margin: auto; padding: 10px;">
+
+            <img src="<?php echo $row['image']?>" style="width: 100%; height: 200px; object-fit: cover;"><br>
+            image : <input type="file" name="image"><br>
+            <textarea name="post" rows="8"><?php echo $row['post']?></textarea><br>
+            <input type="hidden" name="action" value="post_edit">
+
+            <button>Edit</button>
+            <a href="profile.php">
+              <button type="button">Cancel</button>
+            </a>
+          </form>
+        <?php endif;?>
+
+      <?php elseif (!empty($_GET['action']) && $_GET['action'] === 'edit') :?>
         
         <h2 style="text-align: center;">Edit profile</h2>
       
@@ -213,7 +326,7 @@
                   <?php endif;?>
                   <div>
                     <div style="color: #888;"><?=date("jS M, Y", strtotime($row['date']))?></div>
-                    <?php echo $row['post']?>
+                    <?php echo nl2br(htmlspecialchars($row['post']))?>
 
                     <br><br>
 
